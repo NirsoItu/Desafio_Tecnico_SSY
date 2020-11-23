@@ -1,6 +1,6 @@
 from flask import Flask, request
 from flask_restful import Resource, Api
-from models import Employees, Users
+from models import Employees, Login
 from flask_httpauth import HTTPBasicAuth
 
 auth = HTTPBasicAuth()
@@ -12,10 +12,10 @@ api = Api(app)
 @auth.verify_password
 def verify_password(username, password):
     print('User validating')
-    print(Users.query.filter_by(username=username, password=password).first())
+    print(Login.query.filter_by(username=username, password=password).first())
     if not (username, password):
         return False
-    return Users.query.filter_by(username=username, password=password).first()
+    return Login.query.filter_by(username=username, password=password).first()
 
 # Methods from Employee class
 class Employee(Resource):
@@ -169,10 +169,94 @@ class ReportAge(Resource):
         }
         return response
 
+
+class ListLogin(Resource):
+    @auth.login_required
+    # Method GET that return all employees
+    def get(self):
+        logins = Login.query.all()
+        response = [{'id':i.id, 'username':i.username,'password':i.password }for i in logins]
+        return response
+
+    @auth.login_required
+    # Method POST to create a new user
+    def post(self):
+        try:
+            data = request.json
+            login = Login(username=data['username'], password=data['password'])
+            login.save()
+            response = {'message': 'User {} was created successfully'.format(login.id),
+                        'id': login.id,
+                        'username': login.username,
+                        'password': login.password
+                        }
+        except KeyError:
+            response = {
+                'status': 'error',
+                'message': 'API error, consult the administrator'
+            }
+        return response
+
+
+class LoginQuery(Resource):
+    @auth.login_required
+    # Method GET that return user by ID
+    def get(self, id):
+        login = Login.query.filter_by(id=id).first()
+        try:
+            response = {
+                'id':login.id,
+                'username':login.username,
+                'password': login.password
+            }
+        except AttributeError:
+            response = {
+                'status': 'error',
+                'message': 'User not found'
+            }
+        return response
+
+    @auth.login_required
+    # Method PUT that allows modify the user by ID
+    def put(self, id):
+        login = Login.query.filter_by(id=id).first()
+        try:
+            data = request.json
+            if 'username' in data:
+                login.username = data['username']
+            if 'password' in data:
+                login.password = data['password']
+                login.save()
+                response = {'message':'User {} successfully modified!'.format(login.id),
+                    'id':login.id,
+                    'username': login.username,
+                    'password': login.password,
+                }
+        except AttributeError:
+            response = {
+                'status': 'error',
+                'message': 'User not found'
+            }
+
+        return response
+
+    @auth.login_required
+    # Method DELETE that delete the employee by ID
+    def delete(self, id):
+        login = Login.query.filter_by(id=id).first()
+        verify = bool(Login.query.filter_by(id=id).first())
+        if not(verify):
+            return {'message':'User not found !'}
+        else:
+            login.delete()
+            return {'message':'User {} was deleted'.format(login.username)}
+
 api.add_resource(Employee,'/employees/<int:id>')
 api.add_resource(ListEmployees,'/employees/')
 api.add_resource(ReportSalary,'/employees/salary/')
 api.add_resource(ReportAge,'/employees/age/')
+api.add_resource(LoginQuery,'/logins/<int:id>')
+api.add_resource(ListLogin,'/logins/')
 
 if __name__ == '__main__':
     app.run(debug=True, host='localhost', port=8000)

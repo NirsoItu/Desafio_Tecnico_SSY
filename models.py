@@ -9,7 +9,6 @@ Base = declarative_base()
 Base.query = db_session.query_property()
 
 
-
 # Employees class
 class Employees(Base):
     __tablename__ = 'employees'
@@ -80,8 +79,8 @@ class Employees(Base):
 
 
 # User class for access to app
-class Users(Base):
-    __tablename__ = 'users'
+class Login(Base):
+    __tablename__ = 'login'
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(30), unique=True, index=True)
     password = Column(String(30))
@@ -105,6 +104,3 @@ def init_db():
 
 if __name__ == '__main__':
     init_db()
-
-
-
